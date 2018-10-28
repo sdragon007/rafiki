@@ -1,4 +1,3 @@
-from PIL import Image
 import numpy as np
 import requests
 
@@ -28,6 +27,18 @@ def load_dataset(uri, task):
                 return (np.array(images), np.array(labels))
             else:
                 raise Exception('{} compression not supported'.format(uri))
+        elif _is_feature_vector_classification(task):
+            if _is_zip(uri):
+                if '\r\n' in encoded.getvalue().decode('utf-8'):
+                    delimiter = '\r\n'
+                else:
+                    delimiter = '\n'
+                data_decoded = encoded.getvalue().decode('utf-8').split(delimiter)
+                data_split = [row.split(",") for row in data_decoded]
+                ncol = len(data_split[0])
+                return (np.array([row[:ncol - 1] for row in data_split]), np.array([row[ncol - 1] for row in data_split]))
+            else:
+                raise Exception('{} compression not supported'.format(uri))
         else:
             raise Exception('{} task not supported'.format(task))
     else:
@@ -44,3 +55,6 @@ def _is_https(protocol):
 
 def _is_image_classification(task):
     return task == TaskType.IMAGE_CLASSIFICATION
+
+def _is_feature_vector_classification(task):
+    return task == TaskType.FEATURE_VECTOR_CLASSIFICATION
