@@ -29,14 +29,21 @@ def load_dataset(uri, task):
                 raise Exception('{} compression not supported'.format(uri))
         elif _is_feature_vector_classification(task):
             if _is_zip(uri):
-                if '\r\n' in encoded.getvalue().decode('utf-8'):
-                    delimiter = '\r\n'
-                else:
-                    delimiter = '\n'
-                data_decoded = encoded.getvalue().decode('utf-8').split(delimiter)
-                data_split = [row.split(",") for row in data_decoded]
-                ncol = len(data_split[0])
-                return (np.array([row[:ncol - 1] for row in data_split]), np.array([row[ncol - 1] for row in data_split]))
+                r = requests.get(uri)
+                features = []
+                labels = []
+                with zipfile.ZipFile(io.BytesIO(r.content)) as dataset:
+                    for entry in dataset.namelist():
+                        encoded = io.BytesIO(dataset.read(entry))
+                        if '\r\n' in encoded.getvalue().decode('utf-8'):
+                            delimiter = '\r\n'
+                        else:
+                            delimiter = '\n'
+                        data_decoded = encoded.getvalue().decode('utf-8').split(delimiter)
+                        data_split = [row.split(",") for row in data_decoded if row != '']
+                        labels.extend(np.array([row[-1] for row in data_split]))
+                        features.extend(np.array([row[:-1] for row in data_split]))
+                return (np.array(features), np.array(labels))
             else:
                 raise Exception('{} compression not supported'.format(uri))
         else:
