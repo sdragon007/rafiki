@@ -42,7 +42,7 @@ def load_dataset(uri, task):
                         data_decoded = encoded.getvalue().decode('utf-8').split(delimiter)
                         data_split = [row.split(",") for row in data_decoded if row != '']
                         labels.extend(np.array([row[-1] for row in data_split]))
-                        features.extend(np.array([row[:-1] for row in data_split]))
+                        features.extend(np.array([row[:-1] for row in data_split]).astype(np.float))
                 return (np.array(features), np.array(labels))
             else:
                 raise Exception('{} compression not supported'.format(uri))

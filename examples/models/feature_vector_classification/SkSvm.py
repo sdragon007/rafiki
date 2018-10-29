@@ -18,7 +18,7 @@ class SkSvmVector(BaseModel):
             'knobs': {
                 'max_iter': {
                     'type': 'int',
-                    'range': [10, 10]
+                    'range': [10, 200]
                 },
                 'kernel': {
                     'type': 'string',

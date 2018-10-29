@@ -1,4 +1,4 @@
-from sklearn import tree
+from sklearn.ensemble import RandomForestClassifier
 import json
 import pickle
 import os
@@ -8,21 +8,33 @@ import numpy as np
 from rafiki.model import BaseModel, InvalidModelParamsException, validate_model_class, load_dataset
 from rafiki.constants import TaskType
 
-class SkDtVector(BaseModel):
+class SkRfVector(BaseModel):
     '''
-    Implements a decision tree classifier on scikit-learn
+    Implements a random forest classifier on scikit-learn
     '''
 
     def get_knob_config(self):
         return {
             'knobs': {
+                'n_estimators': {
+                    'type': 'int',
+                    'range': [1, 20]
+                },
                 'max_depth': {
                     'type': 'int',
-                    'range': [5, 20]
+                    'range': [2, 20]
                 },
                 'criterion': {
                     'type': 'string',
                     'values': ['gini', 'entropy']
+                },
+                'min_samples_split': {
+                    'type': 'int',
+                    'range': [2, 5]
+                },
+                'bootstrap': {
+                    'type': 'bool',
+                    'values': [True, False]
                 }
             }
         }
@@ -31,11 +43,17 @@ class SkDtVector(BaseModel):
         return self._predict_label_mapping
 
     def init(self, knobs):
+        self._n_estimators = knobs.get('n_estimators') 
         self._max_depth = knobs.get('max_depth') 
         self._criterion = knobs.get('criterion') 
+        self._min_samples_split = knobs.get('min_samples_split') 
+        self._bootstrap = knobs.get('bootstrap') 
         self._clf = self._build_classifier(
+            self._n_estimators,
             self._max_depth,
-            self._criterion
+            self._criterion,
+            self._min_samples_split,
+            self._bootstrap
         )
         
     def train(self, dataset_uri, task):
@@ -94,16 +112,19 @@ class SkDtVector(BaseModel):
         # Here, we use Rafiki's in-built dataset loader
         return load_dataset(dataset_uri, task) 
 
-    def _build_classifier(self, max_depth, criterion):
-        clf = tree.DecisionTreeClassifier(
-            max_depth=max_depth,
-            criterion=criterion
-        ) 
+    def _build_classifier(self, n_estimators, max_depth, criterion, min_samples_split, bootstrap):
+        clf = RandomForestClassifier(
+            n_estimators = n_estimators,
+            max_depth = max_depth,
+            criterion = criterion,
+            min_samples_split = min_samples_split,
+            bootstrap = bootstrap
+        )
         return clf
 
 if __name__ == '__main__':
     validate_model_class(
-        model_class=SkDtVector,
+        model_class=SkRfVector,
         train_dataset_uri='https://github.com/sdragon007/sea_dataset/blob/master/sea_train.zip?raw=true',
         test_dataset_uri='https://github.com/sdragon007/sea_dataset/blob/master/sea_test.zip?raw=true',
         task=TaskType.FEATURE_VECTOR_CLASSIFICATION,

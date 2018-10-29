@@ -23,7 +23,7 @@ class TfSingleHiddenLayerVector(BaseModel):
                 },
                 'epochs': {
                     'type': 'int',
-                    'range': [1, 1]
+                    'range': [1, 20]
                 },
                 'learning_rate': {
                     'type': 'float_exp',

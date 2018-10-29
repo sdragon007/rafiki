@@ -1,4 +1,4 @@
-from sklearn import tree
+from sklearn.linear_model import LogisticRegression
 import json
 import pickle
 import os
@@ -8,21 +8,29 @@ import numpy as np
 from rafiki.model import BaseModel, InvalidModelParamsException, validate_model_class, load_dataset
 from rafiki.constants import TaskType
 
-class SkDtVector(BaseModel):
+class SkLogVector(BaseModel):
     '''
-    Implements a decision tree classifier on scikit-learn
+    Implements a logistic regression on scikit-learn
     '''
 
     def get_knob_config(self):
         return {
             'knobs': {
-                'max_depth': {
+                'max_iter': {
                     'type': 'int',
-                    'range': [5, 20]
+                    'range': [10, 200]
                 },
-                'criterion': {
+                'penalty': {
                     'type': 'string',
-                    'values': ['gini', 'entropy']
+                    'values': ['l1', 'l2']
+                },
+                'tol': {
+                    'type': 'float_exp',
+                    'range': [1e-5, 1e-1]
+                },
+                'C': {
+                    'type': 'float_exp',
+                    'range': [1e-2, 1e2]
                 }
             }
         }
@@ -31,16 +39,19 @@ class SkDtVector(BaseModel):
         return self._predict_label_mapping
 
     def init(self, knobs):
-        self._max_depth = knobs.get('max_depth') 
-        self._criterion = knobs.get('criterion') 
+        self._max_iter = knobs.get('max_iter') 
+        self._penalty = knobs.get('penalty') 
+        self._tol = knobs.get('tol') 
+        self._C = knobs.get('C') 
         self._clf = self._build_classifier(
-            self._max_depth,
-            self._criterion
+            self._max_iter,
+            self._penalty,
+            self._tol,
+            self._C
         )
         
     def train(self, dataset_uri, task):
         (images, labels) = self._load_dataset(dataset_uri, task)
-        
         class_names = np.unique(labels)
         num_classes = len(class_names)
         self._predict_label_mapping = dict(zip(range(num_classes), class_names))
@@ -56,7 +67,7 @@ class SkDtVector(BaseModel):
         (images, labels) = self._load_dataset(dataset_uri, task)
         train_and_evalutate_label_mapping = {v: k for k, v in  self._predict_label_mapping.items()}
         labels = np.array([train_and_evalutate_label_mapping[label] for label in labels])
-
+        
         X = self._prepare_X(images)
         y = labels
         preds = self._clf.predict(X)
@@ -94,16 +105,19 @@ class SkDtVector(BaseModel):
         # Here, we use Rafiki's in-built dataset loader
         return load_dataset(dataset_uri, task) 
 
-    def _build_classifier(self, max_depth, criterion):
-        clf = tree.DecisionTreeClassifier(
-            max_depth=max_depth,
-            criterion=criterion
+    def _build_classifier(self, max_iter, penalty, tol, C):
+        clf = LogisticRegression(
+            max_iter=max_iter,
+            penalty=penalty,
+            tol=tol,
+            C=C
         ) 
         return clf
 
+
 if __name__ == '__main__':
     validate_model_class(
-        model_class=SkDtVector,
+        model_class=SkLogVector,
         train_dataset_uri='https://github.com/sdragon007/sea_dataset/blob/master/sea_train.zip?raw=true',
         test_dataset_uri='https://github.com/sdragon007/sea_dataset/blob/master/sea_test.zip?raw=true',
         task=TaskType.FEATURE_VECTOR_CLASSIFICATION,
